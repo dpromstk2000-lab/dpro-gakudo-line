@@ -29,6 +29,7 @@
   let lineRequests = null;
   let systemCheck = null;
   let capacityData = null;
+  let notificationData = null;
   let busy = false;
   let refreshTimer = null;
   let clockTimer = null;
@@ -78,11 +79,12 @@
   }
 
   async function loadAll() {
-    [dashboard, requests, lineRequests, capacityData] = await Promise.all([
+    [dashboard, requests, lineRequests, capacityData, notificationData] = await Promise.all([
       A.ownerApi(`/admin/dashboard?date=${today()}`),
       A.ownerApi("/admin/requests?status=pending&limit=100"),
       A.ownerApi("/admin/line-link-requests?status=pending&limit=100"),
-      A.ownerApi(`/admin/holiday-capacity?from=${today()}&to=${addDays(today(),45)}`)
+      A.ownerApi(`/admin/holiday-capacity?from=${today()}&to=${addDays(today(),45)}`),
+      A.ownerApi("/admin/notifications?status=open&limit=100")
     ]);
     $("#ipadOwnerName").textContent = dashboard.staff?.displayName || dashboard.auth?.staffCode || "管理者";
     $("#ipadOwnerMeta").textContent = `${dashboard.staff?.staffCode || dashboard.auth?.staffCode || ""} / ${dashboard.staff?.role || dashboard.auth?.role || ""}`;
@@ -98,6 +100,7 @@
     renderHandoffs();
     renderSafety();
     renderCapacity();
+    renderNotifications();
     fillChildOptions();
     const s = dashboard.summary || {};
     const approvalCount = Number(s.pendingLineLinks || 0) + Number(s.pendingAbsenceChanges || 0) + Number(s.pendingPickupChanges || 0) + Number(s.pendingSoloReturns || 0);
@@ -106,6 +109,7 @@
     $("#ipadHandoffTabCount").textContent = `${s.openHandoffs || 0}件`;
     $("#ipadSafetyTabCount").textContent = `${s.openIncidents || 0}件`;
     $("#ipadCapacityTabCount").textContent = `${capacityData?.summary?.pendingApplications || 0}件`;
+    $("#ipadNotificationTabCount").textContent = `${notificationData?.summary?.openAlerts || 0}件`;
   }
 
   function renderCapacity() {
@@ -116,6 +120,10 @@
     $("#ipadCapacityDays").innerHTML=(capacityData.capacityDays||[]).slice(0,20).map(d=>`<article class="ipad-row"><div><strong>${d.date}</strong><p>${esc(d.period?.periodName||"通常日")}</p></div>${chip(d.closed?"停止":d.remaining===0?"満員":`残り${d.remaining}名`,d.closed||d.remaining===0?"danger":d.remaining<=3?"warn":"")}</article>`).join("");
     $("#ipadHolidayApplications").innerHTML=(capacityData.applications||[]).map(a=>`<article class="ipad-row"><div><strong>${esc(a.childName)}・${esc(a.periodName)}</strong><p>${a.requestedDates.length}日申請</p></div>${chip(label(a.status),a.status==="pending"?"warn":"")}</article>`).join("")||'<p class="muted">申請はありません。</p>';
   }
+
+  function renderNotifications(){if(!notificationData)return;const s=notificationData.summary||{};const items=[["未完了",s.openAlerts||0],["緊急",s.criticalAlerts||0],["送信待ち",s.pendingJobs||0],["保留",s.heldJobs||0],["本日送信",s.sentToday||0],["失敗",s.failedJobs||0]];$("#ipadNotificationSummary").innerHTML=items.map(([k,v],i)=>`<article class="ipad-summary-card ${(i===0||i===1||i===5)&&Number(v)?"alert":""}"><span>${k}</span><strong>${v}</strong></article>`).join("");$("#ipadNotificationAlerts").innerHTML=(notificationData.alerts||[]).map(a=>`<article class="ipad-notification-card ${a.severity}"><div class="section-head"><div><h3>${esc(a.title)}</h3><p>${esc(a.childName||"")}</p></div>${chip(label(a.severity),a.severity==="critical"?"danger":"warn")}</div><p>${esc(a.body)}</p><div class="ipad-notification-actions">${a.status==="open"?`<button class="btn secondary ipad-alert-action" data-id="${a.id}" data-action="acknowledge" type="button">確認済み</button>`:"<span></span>"}<button class="btn primary ipad-alert-action" data-id="${a.id}" data-action="resolve" type="button">解決</button></div></article>`).join("")||'<p class="muted">未完了の警告はありません。</p>';$("#ipadNotificationJobs").innerHTML=(notificationData.jobs||[]).slice(0,20).map(j=>`<article class="ipad-notification-card"><div class="section-head"><strong>${esc(j.title)}</strong>${chip(label(j.status),j.status==="failed"?"danger":j.status==="held"?"warn":"")}</div><p>${esc(j.recipientName||j.childName||"-")}／${esc(j.body)}</p></article>`).join("")||'<p class="muted">通知キューはありません。</p>';$$('.ipad-alert-action').forEach(b=>b.onclick=()=>ipadAlertAction(b.dataset.id,b.dataset.action))}
+  async function ipadAlertAction(id,action){await safeRun(async()=>{await A.ownerApi(`/admin/notifications/alerts/${id}/action`,{method:'POST',body:{action,note:''}});await loadAll()},'警告を更新しました。')}
+  async function ipadPrepareNotifications(){await safeRun(async()=>{await A.ownerApi('/admin/notifications/prepare',{method:'POST',body:{}});await loadAll()},'自動確認を実行しました。')}
 
   function renderSummary() {
     const s = dashboard.summary || {};
@@ -312,7 +320,7 @@
     const pairs = [
       ["全体", systemCheck.ok], ["DB", systemCheck.dbOk], ["認証", systemCheck.authOk], ["家族管理", systemCheck.familyOk],
       ["保護者", systemCheck.guardianOk], ["入退室", systemCheck.attendanceOk], ["管理者", systemCheck.ownerOk],
-      ["デモ準備", systemCheck.demoPrepared], ["公開ガード", systemCheck.productionGuardOk]
+      ["通知", systemCheck.notificationOk], ["デモ準備", systemCheck.demoPrepared], ["公開ガード", systemCheck.productionGuardOk]
     ];
     $("#ipadSystemGrid").innerHTML = pairs.map(([name, ok]) => `<article class="ipad-system-card"><span>${esc(name)}</span><strong>${ok ? "正常" : "要確認"}</strong>${chip(ok ? "PASS" : "FAIL", ok ? "" : "danger")}</article>`).join("");
     $("#ipadSystemDetail").textContent = JSON.stringify(systemCheck, null, 2);
@@ -359,6 +367,7 @@
   $("#ipadOpenHandoff").onclick = () => $("#ipadHandoffFormPanel").classList.toggle("hidden");
   $("#ipadOpenIncident").onclick = () => $("#ipadIncidentFormPanel").classList.toggle("hidden");
   $("#ipadRunSystemCheck").onclick = () => safeRun(runSystemCheck, "一括確認を実行しました。");
+  $("#ipadNotificationPrepare").onclick = ipadPrepareNotifications;
   $$(".ipad-tabs button").forEach((b) => b.onclick = () => showView(b.dataset.view));
   $$(".ipad-jump").forEach((b) => b.onclick = () => showView(b.dataset.target));
 

@@ -12,6 +12,7 @@
   let lineRequests = null;
   let staffData = null;
   let capacityData = null;
+  let notificationData = null;
 
   const status = (message, type = "ok") => {
     const el = $("#ownerStatus");
@@ -53,7 +54,7 @@
   }
 
   async function loadAll() {
-    await Promise.all([loadDashboard(), loadRequests(), loadFamily(), loadLineRequests(), loadStaff(), loadCapacity()]);
+    await Promise.all([loadDashboard(), loadRequests(), loadFamily(), loadLineRequests(), loadStaff(), loadCapacity(), loadNotifications()]);
     $("#ownerName").textContent = dashboard.staff?.displayName || dashboard.auth?.staffCode || "管理者";
     $("#ownerMeta").textContent = `${dashboard.staff?.staffCode || dashboard.auth?.staffCode || ""} / ${dashboard.staff?.role || dashboard.auth?.role || ""}`;
     $("#ownerFacilityName").textContent = dashboard.facility?.facilityName || C.facilityName;
@@ -64,6 +65,7 @@
     renderSafety();
     renderStaff();
     renderCapacity();
+    renderNotifications();
     setLogged(true);
   }
 
@@ -96,6 +98,10 @@
     const from = $("#capacityFrom")?.value || jstToday();
     const to = $("#capacityTo")?.value || addDays(from, 60);
     capacityData = await A.ownerApi(`/admin/holiday-capacity?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  }
+  async function loadNotifications() {
+    const state = $("#notificationStatus")?.value || "open";
+    notificationData = await A.ownerApi(`/admin/notifications?status=${encodeURIComponent(state)}&limit=150`);
   }
   function addDays(dateText, days) { const d = new Date(`${dateText}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); }
 
@@ -273,6 +279,21 @@
   async function savePeriod(e){e.preventDefault();const body={periodId:$("#periodId").value||null,periodName:$("#periodName").value,periodType:$("#periodType").value,startDate:$("#periodStart").value,endDate:$("#periodEnd").value,applicationOpenAt:$("#periodApplyOpen").value?new Date($("#periodApplyOpen").value).toISOString():null,applicationCloseAt:$("#periodApplyClose").value?new Date($("#periodApplyClose").value).toISOString():null,defaultOpeningTime:"08:00",defaultClosingTime:"19:00",capacity:Number($("#periodCapacity").value),status:$("#periodStatus").value,notes:$("#periodNotes").value};try{await A.ownerApi('/admin/holiday-periods/upsert',{method:'POST',body});e.target.classList.add('hidden');await loadCapacity();renderCapacity();status("長期休暇期間を保存しました。")}catch(x){status(x.message,"error")}}
   async function waitlistAction(id,action,current){const body={action};if(action==="priority")body.priority=Number(prompt("優先順位（小さいほど優先）",current)||current);if(action==="offer"){const d=new Date(Date.now()+7*86400000);body.offerExpiresAt=d.toISOString();body.note=prompt("利用案内メモ","空きが出たためご案内")||""}try{await A.ownerApi(`/admin/waiting-list/${id}/action`,{method:'POST',body});await loadCapacity();renderCapacity();status("待機登録を更新しました。")}catch(e){status(e.message,"error")}}
 
+  const notificationLabel = (v) => ({arrival_overdue:"入室超過",departure_overdue:"退室超過",allergy_warning:"アレルギー",request_due:"申請期限",holiday_deadline:"長期休暇締切",holiday_application_pending:"長期休暇未審査",line_link_pending:"LINE承認待ち",handoff_urgent:"重要申し送り",incident_critical:"重大事故",capacity_full:"満員",capacity_closed:"受入停止",waitlist_offer_expiry:"待機回答期限",arrival_notice:"入室通知",departure_notice:"退室通知",announcement:"お知らせ",pending:"送信待ち",held:"保留",sending:"送信中",sent:"送信済み",failed:"失敗",open:"未対応",acknowledged:"確認済み",resolved:"解決",suppressed:"非表示",warning:"注意",high:"重要",critical:"緊急",info:"情報"}[v]||v||"-");
+  function renderNotifications(){
+    if(!notificationData)return; const x=notificationData.summary||{};
+    const sums=[["未完了警告",x.openAlerts||0],["緊急警告",x.criticalAlerts||0],["送信待ち",x.pendingJobs||0],["保留",x.heldJobs||0],["本日送信",x.sentToday||0],["失敗",x.failedJobs||0]];
+    $("#notificationSummary").innerHTML=sums.map(([k,v],i)=>`<article class="owner-summary-card ${(i===0||i===1||i===5)&&Number(v)?"alert-card":""}"><span>${k}</span><strong>${v}</strong></article>`).join("");
+    $("#notificationAlerts").innerHTML=(notificationData.alerts||[]).map(a=>`<article class="notification-card severity-${esc(a.severity)}"><div class="section-head"><div><h3>${esc(a.title)}</h3><div class="notification-meta">${chip(notificationLabel(a.alertType),a.severity==="critical"?"danger":a.severity==="high"?"warn":"")}${chip(notificationLabel(a.status))}${a.childName?`<span>${esc(a.childName)}</span>`:""}</div></div><small>${dateTime(a.dueAt||a.createdAt)}</small></div><p>${esc(a.body)}</p>${["open","acknowledged"].includes(a.status)?`<div class="notification-card-actions">${a.status==="open"?`<button class="btn secondary notification-alert-action" data-id="${a.id}" data-action="acknowledge" type="button">確認済み</button>`:""}<button class="btn primary notification-alert-action" data-id="${a.id}" data-action="resolve" type="button">解決</button><button class="btn danger notification-alert-action" data-id="${a.id}" data-action="suppress" type="button">非表示</button></div>`:""}</article>`).join("")||'<p class="muted">該当する警告はありません。</p>';
+    $("#notificationJobs").innerHTML=(notificationData.jobs||[]).slice(0,80).map(j=>`<article class="notification-card notification-job-${esc(j.status)}"><div class="section-head"><div><h3>${esc(j.title)}</h3><div class="notification-meta">${chip(notificationLabel(j.eventType))}${chip(notificationLabel(j.status),j.status==="failed"?"danger":j.status==="held"?"warn":"")}</div></div><small>${dateTime(j.createdAt)}</small></div><p>${esc(j.recipientName||j.childName||"-")}／${esc(j.body)}</p>${j.holdReason?`<p class="muted">保留理由：${esc(j.holdReason)}</p>`:""}${j.lastErrorMessage?`<p class="alert">${esc(j.lastErrorMessage)}</p>`:""}${["held","failed"].includes(j.status)?`<button class="mini notification-job-retry" data-id="${j.id}" type="button">再試行</button>`:""}</article>`).join("")||'<p class="muted">通知履歴はありません。</p>';
+    $("#notificationRuns").innerHTML=(notificationData.runs||[]).map(r=>`<article class="notification-run"><strong>${esc(r.triggerType)}・${esc(r.status)}</strong><small>${dateTime(r.startedAt)}</small><p>準備 ${r.prepared}／待ち ${r.pending}／保留 ${r.held}／送信 ${r.sent}／失敗 ${r.failed}</p></article>`).join("")||'<p class="muted">自動確認履歴はありません。</p>';
+    $$(".notification-alert-action").forEach(b=>b.onclick=()=>notificationAlertAction(b.dataset.id,b.dataset.action));
+    $$(".notification-job-retry").forEach(b=>b.onclick=()=>notificationRetry(b.dataset.id));
+  }
+  async function notificationAlertAction(id,action){const note=action==="resolve"||action==="suppress"?(prompt("対応メモ","")||""):"";try{await A.ownerApi(`/admin/notifications/alerts/${id}/action`,{method:"POST",body:{action,note}});await loadNotifications();renderNotifications();status("警告を更新しました。")}catch(e){status(e.message,"error")}}
+  async function notificationRetry(id){try{await A.ownerApi(`/admin/notifications/jobs/${id}/retry`,{method:"POST",body:{}});await loadNotifications();renderNotifications();status("通知を再試行キューへ戻しました。")}catch(e){status(e.message,"error")}}
+  async function prepareNotifications(){try{const result=await A.ownerApi('/admin/notifications/prepare',{method:'POST',body:{}});await loadNotifications();renderNotifications();status(`自動確認を実行しました（警告${result.alertsPrepared||0}・通知${result.jobsPrepared||0}）。`)}catch(e){status(e.message,"error")}}
+
   async function loadAudit() {
     const q = $("#auditQuery").value.trim();
     const data = await A.ownerApi(`/admin/audit-logs?query=${encodeURIComponent(q)}&limit=150`);
@@ -315,6 +336,9 @@
   $("#auditClear").onclick = () => { $("#auditQuery").value = ""; loadAudit().catch(e => status(e.message, "error")); };
   $("#runSystemCheck").onclick = runSystemCheck;
   $("#capacityReload").onclick = () => loadCapacity().then(renderCapacity).catch(e => status(e.message,"error"));
+  $("#notificationReload").onclick = () => loadNotifications().then(renderNotifications).catch(e => status(e.message,"error"));
+  $("#notificationPrepare").onclick = prepareNotifications;
+  $("#notificationStatus").onchange = () => loadNotifications().then(renderNotifications).catch(e => status(e.message,"error"));
   $("#newHolidayPeriod").onclick = () => { $("#holidayPeriodForm").reset(); $("#periodId").value=""; $("#periodCapacity").value=40; $("#holidayPeriodForm").classList.toggle("hidden"); };
   $("#holidayPeriodForm").onsubmit = savePeriod;
   $$(".owner-nav button").forEach(b => b.onclick = () => showView(b.dataset.view));
