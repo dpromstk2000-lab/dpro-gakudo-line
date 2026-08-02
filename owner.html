@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#123b56">
+  <meta name="robots" content="noindex,nofollow">
+  <title>DPRO 学童保育｜管理者PC</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="owner.css">
+</head>
+<body class="owner-body">
+<header class="owner-header">
+  <div class="owner-header-inner">
+    <div class="brand"><span class="mark">D</span><div><strong>DPRO GAKUDO</strong><small>管理者PC・施設全体管理</small></div></div>
+    <div class="owner-header-links"><a href="index.html">入口</a><a href="staff.html">スタッフ当日画面</a><a href="member.html">保護者画面</a></div>
+  </div>
+</header>
+<main>
+  <div id="ownerStatus" class="status owner-status" aria-live="polite"></div>
+  <section id="ownerLogin" class="card owner-login">
+    <p class="eyebrow">OWNER AUTHENTICATION</p>
+    <h1>学童クラブ管理画面</h1>
+    <p class="hint">児童・保護者、申請、入退室、安全情報、職員権限を管理します。</p>
+    <div class="field"><label>施設コード</label><input id="ownerFacilityCode" class="control"></div>
+    <div class="two"><div class="field"><label>職員コード</label><input id="ownerStaffCode" class="control"></div><div class="field"><label>管理コード</label><input id="ownerAccessCode" class="control" type="password" inputmode="numeric"></div></div>
+    <div class="buttons"><button id="ownerDemoLogin" class="btn secondary" type="button">管理者 田中として体験</button><button id="ownerLoginBtn" class="btn primary" type="button">ログイン</button><button id="ownerClearCode" class="btn danger" type="button">管理コードを削除</button></div>
+  </section>
+
+  <section id="ownerApp" class="owner-shell hidden">
+    <aside class="owner-sidebar">
+      <div class="owner-profile"><span class="badge">管理者</span><strong id="ownerName"></strong><small id="ownerMeta"></small></div>
+      <nav class="owner-nav">
+        <button class="active" data-view="dashboard" type="button"><span>01</span>ダッシュボード</button>
+        <button data-view="requests" type="button"><span>02</span>申請・承認</button>
+        <button data-view="children" type="button"><span>03</span>児童台帳</button>
+        <button data-view="line" type="button"><span>04</span>LINE連携</button>
+        <button data-view="safety" type="button"><span>05</span>安全・事故</button>
+        <button data-view="staff" type="button"><span>06</span>職員権限</button>
+        <button data-view="audit" type="button"><span>07</span>操作履歴</button>
+        <button data-view="system" type="button"><span>08</span>システム確認</button>
+      </nav>
+      <div class="sidebar-actions"><button id="ownerReload" class="btn secondary" type="button">全体を再読込</button><button id="ownerLogout" class="btn danger" type="button">ログアウト</button></div>
+    </aside>
+    <div class="owner-content">
+      <section id="viewDashboard" class="owner-view">
+        <div class="view-heading"><div><p class="eyebrow">TODAY & MANAGEMENT</p><h1>施設ダッシュボード</h1><p id="ownerFacilityName" class="muted"></p></div><input id="ownerDate" class="control date-control" type="date"></div>
+        <div id="ownerSummary" class="owner-summary-grid"></div>
+        <div class="owner-grid two-col">
+          <section class="card owner-panel"><div class="section-head"><h2>本日の児童</h2><a href="staff.html" class="mini">当日画面</a></div><div id="ownerTodayChildren"></div></section>
+          <section class="card owner-panel"><div class="section-head"><h2>承認待ち</h2><button class="mini jump-view" data-target="requests" type="button">すべて見る</button></div><div id="ownerPendingPreview"></div></section>
+          <section class="card owner-panel"><div class="section-head"><h2>未完了の申し送り</h2></div><div id="ownerHandoffs"></div></section>
+          <section class="card owner-panel"><div class="section-head"><h2>事故・ヒヤリハット</h2><button class="mini jump-view" data-target="safety" type="button">確認する</button></div><div id="ownerIncidentPreview"></div></section>
+        </div>
+      </section>
+
+      <section id="viewRequests" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">APPROVAL QUEUE</p><h1>保護者申請・承認</h1></div><select id="requestStatus" class="control compact-control"><option value="pending">承認待ち</option><option value="all">すべて</option><option value="applied">反映済み</option><option value="rejected">却下</option></select></div>
+        <div class="owner-grid three-col"><section class="card owner-panel"><h2>欠席・利用変更</h2><div id="absenceRequests"></div></section><section class="card owner-panel"><h2>お迎え変更</h2><div id="pickupRequests"></div></section><section class="card owner-panel"><h2>一人帰り</h2><div id="soloRequests"></div></section></div>
+      </section>
+
+      <section id="viewChildren" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">CHILD LEDGER</p><h1>児童・保護者台帳</h1></div><button id="newChild" class="btn primary" type="button">児童を登録</button></div>
+        <section class="card filter-card"><div class="filter-row"><input id="childSearch" class="control" placeholder="児童名・児童番号・保護者名・電話番号"><select id="childStatus" class="control"><option value="">すべて</option><option value="active">利用中</option><option value="waiting">待機</option><option value="paused">休止</option><option value="graduated">卒所</option></select><button id="childSearchBtn" class="btn primary" type="button">検索</button><button id="childSearchClear" class="btn secondary" type="button">解除</button></div></section>
+        <div id="childLedger" class="ledger-grid"></div>
+      </section>
+
+      <section id="viewLine" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">LINE LINK APPROVAL</p><h1>保護者LINE連携</h1></div><select id="lineStatus" class="control compact-control"><option value="pending">承認待ち</option><option value="all">すべて</option><option value="approved">承認済み</option><option value="rejected">却下</option></select></div>
+        <div id="lineRequests" class="stack-list"></div>
+      </section>
+
+      <section id="viewSafety" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">SAFETY MANAGEMENT</p><h1>事故・ヒヤリハット</h1></div></div>
+        <div id="incidentList" class="stack-list"></div>
+      </section>
+
+      <section id="viewStaff" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">STAFF PERMISSIONS</p><h1>職員・権限管理</h1></div></div>
+        <div id="staffList" class="staff-permission-grid"></div>
+      </section>
+
+      <section id="viewAudit" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">AUDIT LOG</p><h1>操作履歴</h1></div></div>
+        <section class="card filter-card"><div class="filter-row"><input id="auditQuery" class="control" placeholder="操作名・職員コード・対象"><button id="auditSearch" class="btn primary" type="button">検索</button><button id="auditClear" class="btn secondary" type="button">解除</button></div></section>
+        <div id="auditList" class="stack-list"></div>
+      </section>
+
+      <section id="viewSystem" class="owner-view hidden">
+        <div class="view-heading"><div><p class="eyebrow">SYSTEM STATUS</p><h1>システム確認</h1></div><button id="runSystemCheck" class="btn primary" type="button">一括確認</button></div>
+        <pre id="systemResult" class="system-result"></pre>
+      </section>
+    </div>
+  </section>
+</main>
+
+<dialog id="childModal" class="owner-dialog"><form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form><div id="childModalBody"></div></dialog>
+<footer class="footer"><span id="ownerVersion"></span></footer>
+<script src="config.js"></script><script src="common.js"></script><script src="owner.js"></script>
+</body>
+</html>
