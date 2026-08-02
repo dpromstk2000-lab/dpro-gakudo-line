@@ -11,6 +11,7 @@
   let family = null;
   let lineRequests = null;
   let staffData = null;
+  let capacityData = null;
 
   const status = (message, type = "ok") => {
     const el = $("#ownerStatus");
@@ -31,7 +32,7 @@
     change_method: "退室方法変更", cancel_request: "利用取消",
     guardian_pickup: "保護者お迎え", authorized_pickup: "代理お迎え", solo_return: "一人帰り",
     facility_shuttle: "施設送迎", other: "その他", pending: "承認待ち", applied: "反映済み",
-    approved: "承認", rejected: "却下", open: "未対応", investigating: "確認中",
+    approved: "承認", partially_approved: "一部承認", waitlisted: "待機", rejected: "却下", open: "未対応", investigating: "確認中",
     guardian_followup: "保護者対応", resolved: "解決", closed: "完了",
     injury: "けが", illness: "体調不良", missing_child: "所在確認", pickup_mismatch: "お迎え相違",
     allergy: "アレルギー", conflict: "児童間トラブル", near_miss: "ヒヤリハット",
@@ -52,7 +53,7 @@
   }
 
   async function loadAll() {
-    await Promise.all([loadDashboard(), loadRequests(), loadFamily(), loadLineRequests(), loadStaff()]);
+    await Promise.all([loadDashboard(), loadRequests(), loadFamily(), loadLineRequests(), loadStaff(), loadCapacity()]);
     $("#ownerName").textContent = dashboard.staff?.displayName || dashboard.auth?.staffCode || "管理者";
     $("#ownerMeta").textContent = `${dashboard.staff?.staffCode || dashboard.auth?.staffCode || ""} / ${dashboard.staff?.role || dashboard.auth?.role || ""}`;
     $("#ownerFacilityName").textContent = dashboard.facility?.facilityName || C.facilityName;
@@ -62,6 +63,7 @@
     renderLineRequests();
     renderSafety();
     renderStaff();
+    renderCapacity();
     setLogged(true);
   }
 
@@ -90,6 +92,12 @@
       else throw error;
     }
   }
+  async function loadCapacity() {
+    const from = $("#capacityFrom")?.value || jstToday();
+    const to = $("#capacityTo")?.value || addDays(from, 60);
+    capacityData = await A.ownerApi(`/admin/holiday-capacity?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  }
+  function addDays(dateText, days) { const d = new Date(`${dateText}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); }
 
   function renderDashboard() {
     const s = dashboard.summary || {};
@@ -243,6 +251,28 @@
     } catch (e) { status(e.message, "error"); }
   }
 
+  function renderCapacity() {
+    if (!capacityData) return;
+    const sm = capacityData.summary || {};
+    const items=[["受付中期間",sm.openPeriods||0],["申請待ち",sm.pendingApplications||0],["一部承認",sm.partiallyApproved||0],["満員日",sm.daysFull||0],["受入停止",sm.daysClosed||0],["曜日待機",sm.enrollmentWaiting||0]];
+    $("#capacitySummary").innerHTML=items.map(([k,v],i)=>`<article class="owner-summary-card ${[1,3,4,5].includes(i)&&Number(v)?"alert-card":""}"><span>${esc(k)}</span><strong>${v}</strong></article>`).join("");
+    $("#holidayPeriodList").innerHTML=(capacityData.periods||[]).map(p=>`<article class="owner-row"><div><strong>${esc(p.periodName)}</strong><p>${p.startDate}〜${p.endDate}・定員${p.capacity||"-"}・申請${p.applicationCount}件</p></div><button class="mini period-edit" data-id="${p.id}" type="button">編集</button></article>`).join("")||'<p class="muted">期間設定はありません。</p>';
+    $$(".period-edit").forEach(b=>b.onclick=()=>editPeriod(b.dataset.id));
+    $("#capacityCalendar").innerHTML=(capacityData.capacityDays||[]).map(d=>`<article class="capacity-day ${d.closed?"closed":d.remaining===0?"full":d.remaining<=3?"limited":""}"><div><strong>${d.date}</strong><p>${d.period?.periodName||"通常日"}</p></div><div class="capacity-numbers"><b>${d.reservedCount}/${d.capacity}</b><small>待機 ${d.waitlistCount}</small></div><input class="control capacity-input" data-date="${d.date}" type="number" min="0" max="500" value="${d.capacity}"><label><input class="capacity-closed" data-date="${d.date}" type="checkbox" ${d.closed?"checked":""}>停止</label><button class="mini capacity-save" data-date="${d.date}" type="button">保存</button></article>`).join("");
+    $$(".capacity-save").forEach(b=>b.onclick=()=>saveCapacityDay(b.dataset.date));
+    $("#holidayApplications").innerHTML=(capacityData.applications||[]).map(a=>holidayApplicationCard(a)).join("")||'<p class="muted">申請はありません。</p>';
+    $$(".holiday-review-save").forEach(b=>b.onclick=()=>reviewHolidayApplication(b.dataset.id));
+    $("#waitingList").innerHTML=(capacityData.waitingList||[]).map(w=>`<article class="request-card"><div class="section-head"><div><strong>${esc(w.childName)}</strong><p>${(w.desiredWeekdays||[]).map(x=>["日","月","火","水","木","金","土"][x]).join("・")}希望</p></div>${chip(w.status,w.status==="waiting"?"warn":"")}</div><div class="request-actions"><button class="btn secondary wait-priority" data-id="${w.id}" data-priority="${w.priority}" type="button">優先度 ${w.priority}</button>${w.status==="waiting"?`<button class="btn primary wait-offer" data-id="${w.id}" type="button">利用案内</button>`:""}</div></article>`).join("")||'<p class="muted">待機登録はありません。</p>';
+    $$(".wait-priority").forEach(b=>b.onclick=()=>waitlistAction(b.dataset.id,"priority",b.dataset.priority));
+    $$(".wait-offer").forEach(b=>b.onclick=()=>waitlistAction(b.dataset.id,"offer"));
+  }
+  function holidayApplicationCard(a){const pending=a.status==="pending";return `<article class="request-card holiday-application"><div class="section-head"><div><strong>${esc(a.childName)}・${esc(a.periodName)}</strong><p>${a.requestedDates.length}日申請／${esc(a.guardianName||"")}</p></div>${chip(label(a.status),pending?"warn":"")}</div><p>${esc(a.guardianNote||"")}</p><div class="holiday-review-days">${a.requestedDates.map(d=>`<label><span>${d}</span><select class="control holiday-decision" data-app="${a.id}" data-date="${d}" ${pending?"":"disabled"}><option value="approved">承認</option><option value="waitlisted">待機</option><option value="rejected">却下</option></select></label>`).join("")}</div>${pending?`<div class="field"><label>審査メモ</label><textarea class="control holiday-note" data-app="${a.id}"></textarea></div><button class="btn primary holiday-review-save" data-id="${a.id}" type="button">利用日を確定</button>`:`<p class="muted">承認 ${(a.approvedDates||[]).length}日／待機 ${(a.waitlistedDates||[]).length}日／却下 ${(a.rejectedDates||[]).length}日</p>`}</article>`}
+  async function reviewHolidayApplication(id){if(!confirm("日ごとの承認・待機・却下を確定しますか？"))return;const selects=$$(`.holiday-decision[data-app="${id}"]`),body={approvedDates:[],waitlistedDates:[],rejectedDates:[],decisionNote:document.querySelector(`.holiday-note[data-app="${id}"]`)?.value||""};selects.forEach(x=>body[`${x.value}Dates`].push(x.dataset.date));try{await A.ownerApi(`/admin/holiday-applications/${id}/review`,{method:"POST",body});await loadCapacity();renderCapacity();status("長期休暇申請を確定しました。")}catch(e){status(e.message,"error")}}
+  async function saveCapacityDay(date){const cap=Number(document.querySelector(`.capacity-input[data-date="${date}"]`).value),closed=document.querySelector(`.capacity-closed[data-date="${date}"]`).checked;let reason="";if(closed)reason=prompt("受入停止理由","施設点検")||"";try{await A.ownerApi('/admin/daily-capacity/upsert',{method:'POST',body:{date,capacity:cap,closed,closeReason:reason}});await loadCapacity();renderCapacity();status("日別定員を更新しました。")}catch(e){status(e.message,"error")}}
+  function editPeriod(id){const p=(capacityData.periods||[]).find(x=>x.id===id);if(!p)return;$("#periodId").value=p.id;$("#periodName").value=p.periodName;$("#periodType").value=p.periodType;$("#periodStart").value=p.startDate;$("#periodEnd").value=p.endDate;$("#periodCapacity").value=p.capacity||40;$("#periodStatus").value=p.status;$("#periodNotes").value=p.notes||"";$("#holidayPeriodForm").classList.remove("hidden")}
+  async function savePeriod(e){e.preventDefault();const body={periodId:$("#periodId").value||null,periodName:$("#periodName").value,periodType:$("#periodType").value,startDate:$("#periodStart").value,endDate:$("#periodEnd").value,applicationOpenAt:$("#periodApplyOpen").value?new Date($("#periodApplyOpen").value).toISOString():null,applicationCloseAt:$("#periodApplyClose").value?new Date($("#periodApplyClose").value).toISOString():null,defaultOpeningTime:"08:00",defaultClosingTime:"19:00",capacity:Number($("#periodCapacity").value),status:$("#periodStatus").value,notes:$("#periodNotes").value};try{await A.ownerApi('/admin/holiday-periods/upsert',{method:'POST',body});e.target.classList.add('hidden');await loadCapacity();renderCapacity();status("長期休暇期間を保存しました。")}catch(x){status(x.message,"error")}}
+  async function waitlistAction(id,action,current){const body={action};if(action==="priority")body.priority=Number(prompt("優先順位（小さいほど優先）",current)||current);if(action==="offer"){const d=new Date(Date.now()+7*86400000);body.offerExpiresAt=d.toISOString();body.note=prompt("利用案内メモ","空きが出たためご案内")||""}try{await A.ownerApi(`/admin/waiting-list/${id}/action`,{method:'POST',body});await loadCapacity();renderCapacity();status("待機登録を更新しました。")}catch(e){status(e.message,"error")}}
+
   async function loadAudit() {
     const q = $("#auditQuery").value.trim();
     const data = await A.ownerApi(`/admin/audit-logs?query=${encodeURIComponent(q)}&limit=150`);
@@ -265,6 +295,8 @@
   }
 
   $("#ownerDate").value = jstToday();
+  $("#capacityFrom").value = jstToday();
+  $("#capacityTo").value = addDays(jstToday(),60);
   $("#ownerFacilityCode").value = C.facilityCode;
   $("#ownerStaffCode").value = C.demo.managerCode;
   $("#ownerVersion").textContent = C.version;
@@ -282,6 +314,9 @@
   $("#auditSearch").onclick = () => loadAudit().catch(e => status(e.message, "error"));
   $("#auditClear").onclick = () => { $("#auditQuery").value = ""; loadAudit().catch(e => status(e.message, "error")); };
   $("#runSystemCheck").onclick = runSystemCheck;
+  $("#capacityReload").onclick = () => loadCapacity().then(renderCapacity).catch(e => status(e.message,"error"));
+  $("#newHolidayPeriod").onclick = () => { $("#holidayPeriodForm").reset(); $("#periodId").value=""; $("#periodCapacity").value=40; $("#holidayPeriodForm").classList.toggle("hidden"); };
+  $("#holidayPeriodForm").onsubmit = savePeriod;
   $$(".owner-nav button").forEach(b => b.onclick = () => showView(b.dataset.view));
   $$(".jump-view").forEach(b => b.onclick = () => showView(b.dataset.target));
 

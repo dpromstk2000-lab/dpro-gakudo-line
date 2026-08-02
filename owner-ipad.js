@@ -6,13 +6,14 @@
   const $$ = (s) => [...document.querySelectorAll(s)];
   const esc = A.esc;
   const today = () => new Date(Date.now() + 32400000).toISOString().slice(0, 10);
+  const addDays = (v,n) => { const d=new Date(`${v}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
   const labels = {
     planned: "未入室", overdue_arrival: "入室時刻超過", arrived: "入室済み", pickup_waiting: "お迎え待ち",
     overdue_departure: "退室時刻超過", departed: "退室済み", absent: "欠席",
     guardian_pickup: "保護者お迎え", authorized_pickup: "代理お迎え", solo_return: "一人帰り",
     facility_shuttle: "施設送迎", other: "その他", absence: "欠席", add_day: "利用追加",
     change_arrival: "入室時刻変更", change_departure: "退室時刻変更", change_method: "退室方法変更",
-    pending: "承認待ち", approved: "承認", applied: "反映済み", rejected: "却下", cancelled: "取消",
+    pending: "承認待ち", approved: "承認", partially_approved: "一部承認", waitlisted: "待機", applied: "反映済み", rejected: "却下", cancelled: "取消",
     low: "低", normal: "通常", high: "重要", urgent: "緊急", open: "未対応", acknowledged: "確認済み",
     investigating: "確認中", guardian_followup: "保護者対応", resolved: "解決", closed: "完了",
     near_miss: "ヒヤリハット", injury: "けが", illness: "体調不良", missing_child: "所在確認",
@@ -27,6 +28,7 @@
   let requests = null;
   let lineRequests = null;
   let systemCheck = null;
+  let capacityData = null;
   let busy = false;
   let refreshTimer = null;
   let clockTimer = null;
@@ -76,10 +78,11 @@
   }
 
   async function loadAll() {
-    [dashboard, requests, lineRequests] = await Promise.all([
+    [dashboard, requests, lineRequests, capacityData] = await Promise.all([
       A.ownerApi(`/admin/dashboard?date=${today()}`),
       A.ownerApi("/admin/requests?status=pending&limit=100"),
-      A.ownerApi("/admin/line-link-requests?status=pending&limit=100")
+      A.ownerApi("/admin/line-link-requests?status=pending&limit=100"),
+      A.ownerApi(`/admin/holiday-capacity?from=${today()}&to=${addDays(today(),45)}`)
     ]);
     $("#ipadOwnerName").textContent = dashboard.staff?.displayName || dashboard.auth?.staffCode || "管理者";
     $("#ipadOwnerMeta").textContent = `${dashboard.staff?.staffCode || dashboard.auth?.staffCode || ""} / ${dashboard.staff?.role || dashboard.auth?.role || ""}`;
@@ -94,6 +97,7 @@
     renderApprovals();
     renderHandoffs();
     renderSafety();
+    renderCapacity();
     fillChildOptions();
     const s = dashboard.summary || {};
     const approvalCount = Number(s.pendingLineLinks || 0) + Number(s.pendingAbsenceChanges || 0) + Number(s.pendingPickupChanges || 0) + Number(s.pendingSoloReturns || 0);
@@ -101,6 +105,16 @@
     $("#ipadAttendanceTabCount").textContent = `${s.total || 0}名`;
     $("#ipadHandoffTabCount").textContent = `${s.openHandoffs || 0}件`;
     $("#ipadSafetyTabCount").textContent = `${s.openIncidents || 0}件`;
+    $("#ipadCapacityTabCount").textContent = `${capacityData?.summary?.pendingApplications || 0}件`;
+  }
+
+  function renderCapacity() {
+    if (!capacityData) return;
+    const s=capacityData.summary||{};
+    const items=[["受付中",s.openPeriods||0],["申請待ち",s.pendingApplications||0],["満員日",s.daysFull||0],["停止日",s.daysClosed||0],["休暇待機",s.holidayWaitlistedDays||0],["曜日待機",s.enrollmentWaiting||0]];
+    $("#ipadCapacitySummary").innerHTML=items.map(([k,v],i)=>`<article class="ipad-summary-card ${i>1&&Number(v)?"alert":""}"><span>${esc(k)}</span><strong>${v}</strong></article>`).join("");
+    $("#ipadCapacityDays").innerHTML=(capacityData.capacityDays||[]).slice(0,20).map(d=>`<article class="ipad-row"><div><strong>${d.date}</strong><p>${esc(d.period?.periodName||"通常日")}</p></div>${chip(d.closed?"停止":d.remaining===0?"満員":`残り${d.remaining}名`,d.closed||d.remaining===0?"danger":d.remaining<=3?"warn":"")}</article>`).join("");
+    $("#ipadHolidayApplications").innerHTML=(capacityData.applications||[]).map(a=>`<article class="ipad-row"><div><strong>${esc(a.childName)}・${esc(a.periodName)}</strong><p>${a.requestedDates.length}日申請</p></div>${chip(label(a.status),a.status==="pending"?"warn":"")}</article>`).join("")||'<p class="muted">申請はありません。</p>';
   }
 
   function renderSummary() {

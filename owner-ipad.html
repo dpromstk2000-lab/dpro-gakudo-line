@@ -1,96 +1,86 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#0b3447">
-  <meta name="robots" content="noindex,nofollow">
-  <title>DPRO 学童保育｜管理者iPad</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="owner-ipad.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" name="viewport"/>
+<meta content="#0b3447" name="theme-color"/>
+<meta content="noindex,nofollow" name="robots"/>
+<title>DPRO 学童保育｜管理者iPad</title>
+<link href="styles.css" rel="stylesheet"/>
+<link href="owner-ipad.css" rel="stylesheet"/>
 </head>
 <body class="ipad-body">
 <header class="ipad-header">
-  <div class="ipad-brand"><span class="mark">D</span><div><strong>DPRO GAKUDO</strong><small>管理者iPad・当日統合運用</small></div></div>
-  <div class="ipad-header-links"><a href="owner.html">管理者PC</a><a href="staff.html">スタッフ画面</a><a href="index.html">入口</a></div>
+<div class="ipad-brand"><span class="mark">D</span><div><strong>DPRO GAKUDO</strong><small>管理者iPad・当日統合運用</small></div></div>
+<div class="ipad-header-links"><a href="owner.html">管理者PC</a><a href="staff.html">スタッフ画面</a><a href="index.html">入口</a></div>
 </header>
-
 <main class="ipad-main">
-  <div id="ipadStatus" class="status ipad-status" aria-live="polite"></div>
-
-  <section id="ipadLogin" class="card ipad-login">
-    <p class="eyebrow">OWNER / MANAGER IPAD</p>
-    <h1>今日の運用と承認を、<br>一つの画面で。</h1>
-    <p class="hint">管理者・主任職員向けの大型タッチ画面です。入退室、お迎え、承認、安全情報を確認します。</p>
-    <div class="ipad-login-grid">
-      <div class="field"><label for="ipadFacilityCode">施設コード</label><input id="ipadFacilityCode" class="control" autocomplete="off"></div>
-      <div class="field"><label for="ipadStaffCode">職員コード</label><input id="ipadStaffCode" class="control" autocomplete="username"></div>
-      <div class="field"><label for="ipadAccessCode">管理コード</label><div class="ipad-code-row"><input id="ipadAccessCode" class="control" type="password" inputmode="numeric" autocomplete="current-password"><button id="ipadClearCode" class="btn danger" type="button">削除</button></div></div>
-    </div>
-    <div class="buttons"><button id="ipadDemoLogin" class="btn secondary" type="button">管理者 田中として体験</button><button id="ipadLoginButton" class="btn primary" type="button">ログイン</button></div>
-  </section>
-
-  <section id="ipadApp" class="hidden">
-    <section class="ipad-topbar">
-      <div><span class="badge">管理者</span><strong id="ipadOwnerName"></strong><small id="ipadOwnerMeta"></small></div>
-      <div class="ipad-topbar-center"><strong id="ipadFacilityName"></strong><small><span id="ipadTodayLabel"></span>　<span id="ipadClock"></span></small></div>
-      <div class="ipad-topbar-actions"><button id="ipadFullscreen" class="btn secondary" type="button">全画面</button><button id="ipadReload" class="btn secondary" type="button">再読込</button><button id="ipadLogout" class="btn danger" type="button">ログアウト</button></div>
-    </section>
-
-    <nav class="ipad-tabs" aria-label="管理者iPadメニュー">
-      <button class="active" data-view="today" type="button"><b>今日</b><small>全体状況</small></button>
-      <button data-view="attendance" type="button"><b>入退室</b><small id="ipadAttendanceTabCount">0名</small></button>
-      <button data-view="approval" type="button"><b>承認</b><small id="ipadApprovalTabCount">0件</small></button>
-      <button data-view="handoff" type="button"><b>申し送り</b><small id="ipadHandoffTabCount">0件</small></button>
-      <button data-view="safety" type="button"><b>安全</b><small id="ipadSafetyTabCount">0件</small></button>
-      <button data-view="system" type="button"><b>検査</b><small>API・DB</small></button>
-    </nav>
-
-    <section id="ipadViewToday" class="ipad-view">
-      <div id="ipadSummary" class="ipad-summary-grid"></div>
-      <div class="ipad-two-columns">
-        <section class="card ipad-panel"><div class="section-head"><h2>注意が必要な児童</h2><button class="mini ipad-jump" data-target="attendance" type="button">入退室へ</button></div><div id="ipadAlertChildren"></div></section>
-        <section class="card ipad-panel"><div class="section-head"><h2>承認・確認待ち</h2><button class="mini ipad-jump" data-target="approval" type="button">承認へ</button></div><div id="ipadPendingPreview"></div></section>
-        <section class="card ipad-panel"><div class="section-head"><h2>未完了の申し送り</h2><button class="mini ipad-jump" data-target="handoff" type="button">確認へ</button></div><div id="ipadHandoffPreview"></div></section>
-        <section class="card ipad-panel"><div class="section-head"><h2>事故・ヒヤリハット</h2><button class="mini ipad-jump" data-target="safety" type="button">安全管理へ</button></div><div id="ipadIncidentPreview"></div></section>
-      </div>
-    </section>
-
-    <section id="ipadViewAttendance" class="ipad-view hidden">
-      <div class="ipad-view-heading"><div><p class="eyebrow">TODAY OPERATIONS</p><h1>入室・お迎え・退室</h1></div><select id="ipadAttendanceFilter" class="control ipad-filter"><option value="all">すべて</option><option value="planned">未入室</option><option value="arrived">入室中</option><option value="pickup_waiting">お迎え待ち</option><option value="departed">退室済み</option><option value="alert">警告あり</option><option value="absent">欠席</option></select></div>
-      <div id="ipadChildGrid" class="ipad-child-grid"></div>
-    </section>
-
-    <section id="ipadViewApproval" class="ipad-view hidden">
-      <div class="ipad-view-heading"><div><p class="eyebrow">APPROVAL QUEUE</p><h1>保護者申請・LINE連携</h1></div><a class="btn secondary" href="owner.html">PCで詳細管理</a></div>
-      <div class="ipad-approval-columns">
-        <section class="card ipad-panel"><h2>欠席・利用変更</h2><div id="ipadAbsenceRequests"></div></section>
-        <section class="card ipad-panel"><h2>お迎え変更</h2><div id="ipadPickupRequests"></div></section>
-        <section class="card ipad-panel"><h2>一人帰り</h2><div id="ipadSoloRequests"></div></section>
-        <section class="card ipad-panel"><h2>LINE連携</h2><div id="ipadLineRequests"></div></section>
-      </div>
-    </section>
-
-    <section id="ipadViewHandoff" class="ipad-view hidden">
-      <div class="ipad-view-heading"><div><p class="eyebrow">HANDOFF</p><h1>申し送り</h1></div><button id="ipadOpenHandoff" class="btn primary" type="button">新規登録</button></div>
-      <section id="ipadHandoffFormPanel" class="card ipad-panel hidden"><form id="ipadHandoffForm"><div class="ipad-form-grid"><div class="field"><label>児童</label><select id="ipadHandoffChild" class="control"><option value="">施設全体</option></select></div><div class="field"><label>分類</label><select id="ipadHandoffCategory" class="control"><option value="general">一般</option><option value="pickup">お迎え</option><option value="health">体調</option><option value="allergy">アレルギー</option><option value="behavior">様子</option><option value="school">学校</option><option value="family">家族</option><option value="safety">安全</option><option value="other">その他</option></select></div><div class="field"><label>優先度</label><select id="ipadHandoffPriority" class="control"><option value="normal">通常</option><option value="high">重要</option><option value="urgent">緊急</option><option value="low">低</option></select></div><div class="field"><label>公開範囲</label><select id="ipadHandoffVisibility" class="control"><option value="staff_only">スタッフのみ</option><option value="guardian_shareable">保護者共有可</option><option value="manager_only">管理者のみ</option></select></div></div><div class="field"><label>内容</label><textarea id="ipadHandoffContent" class="control" maxlength="3000" required></textarea></div><button class="btn primary" type="submit">申し送りを登録</button></form></section>
-      <div id="ipadHandoffList" class="ipad-list-grid"></div>
-    </section>
-
-    <section id="ipadViewSafety" class="ipad-view hidden">
-      <div class="ipad-view-heading"><div><p class="eyebrow">SAFETY</p><h1>事故・ヒヤリハット</h1></div><button id="ipadOpenIncident" class="btn danger" type="button">速報を登録</button></div>
-      <section id="ipadIncidentFormPanel" class="card ipad-panel hidden"><form id="ipadIncidentForm"><div class="ipad-form-grid"><div class="field"><label>児童</label><select id="ipadIncidentChild" class="control"><option value="">施設全体</option></select></div><div class="field"><label>種別</label><select id="ipadIncidentType" class="control"><option value="near_miss">ヒヤリハット</option><option value="injury">けが</option><option value="illness">体調不良</option><option value="missing_child">所在確認</option><option value="pickup_mismatch">お迎え相違</option><option value="allergy">アレルギー</option><option value="conflict">児童間トラブル</option><option value="property_damage">物損</option><option value="other">その他</option></select></div><div class="field"><label>重要度</label><select id="ipadIncidentSeverity" class="control"><option value="low">低</option><option value="medium">中</option><option value="high">高</option><option value="critical">重大</option></select></div><div class="field"><label>発生場所</label><input id="ipadIncidentLocation" class="control" maxlength="300"></div></div><div class="field"><label>概要</label><textarea id="ipadIncidentSummary" class="control" maxlength="3000" required></textarea></div><div class="field"><label>初動対応</label><textarea id="ipadIncidentAction" class="control" maxlength="3000" required></textarea></div><button class="btn danger" type="submit">速報を登録</button></form></section>
-      <div id="ipadIncidentList" class="ipad-list-grid"></div>
-    </section>
-
-    <section id="ipadViewSystem" class="ipad-view hidden">
-      <div class="ipad-view-heading"><div><p class="eyebrow">SYSTEM CHECK</p><h1>API・データベース確認</h1></div><button id="ipadRunSystemCheck" class="btn primary" type="button">一括確認</button></div>
-      <div id="ipadSystemGrid" class="ipad-system-grid"></div><pre id="ipadSystemDetail" class="ipad-system-detail"></pre>
-    </section>
-  </section>
+<div aria-live="polite" class="status ipad-status" id="ipadStatus"></div>
+<section class="card ipad-login" id="ipadLogin">
+<p class="eyebrow">OWNER / MANAGER IPAD</p>
+<h1>今日の運用と承認を、<br/>一つの画面で。</h1>
+<p class="hint">管理者・主任職員向けの大型タッチ画面です。入退室、お迎え、承認、安全情報を確認します。</p>
+<div class="ipad-login-grid">
+<div class="field"><label for="ipadFacilityCode">施設コード</label><input autocomplete="off" class="control" id="ipadFacilityCode"/></div>
+<div class="field"><label for="ipadStaffCode">職員コード</label><input autocomplete="username" class="control" id="ipadStaffCode"/></div>
+<div class="field"><label for="ipadAccessCode">管理コード</label><div class="ipad-code-row"><input autocomplete="current-password" class="control" id="ipadAccessCode" inputmode="numeric" type="password"/><button class="btn danger" id="ipadClearCode" type="button">削除</button></div></div>
+</div>
+<div class="buttons"><button class="btn secondary" id="ipadDemoLogin" type="button">管理者 田中として体験</button><button class="btn primary" id="ipadLoginButton" type="button">ログイン</button></div>
+</section>
+<section class="hidden" id="ipadApp">
+<section class="ipad-topbar">
+<div><span class="badge">管理者</span><strong id="ipadOwnerName"></strong><small id="ipadOwnerMeta"></small></div>
+<div class="ipad-topbar-center"><strong id="ipadFacilityName"></strong><small><span id="ipadTodayLabel"></span>　<span id="ipadClock"></span></small></div>
+<div class="ipad-topbar-actions"><button class="btn secondary" id="ipadFullscreen" type="button">全画面</button><button class="btn secondary" id="ipadReload" type="button">再読込</button><button class="btn danger" id="ipadLogout" type="button">ログアウト</button></div>
+</section>
+<nav aria-label="管理者iPadメニュー" class="ipad-tabs">
+<button class="active" data-view="today" type="button"><b>今日</b><small>全体状況</small></button>
+<button data-view="attendance" type="button"><b>入退室</b><small id="ipadAttendanceTabCount">0名</small></button>
+<button data-view="approval" type="button"><b>承認</b><small id="ipadApprovalTabCount">0件</small></button>
+<button data-view="handoff" type="button"><b>申し送り</b><small id="ipadHandoffTabCount">0件</small></button>
+<button data-view="safety" type="button"><b>安全</b><small id="ipadSafetyTabCount">0件</small></button>
+<button data-view="capacity" type="button"><b>定員</b><small id="ipadCapacityTabCount">0件</small></button><button data-view="system" type="button"><b>検査</b><small>API・DB</small></button>
+</nav>
+<section class="ipad-view" id="ipadViewToday">
+<div class="ipad-summary-grid" id="ipadSummary"></div>
+<div class="ipad-two-columns">
+<section class="card ipad-panel"><div class="section-head"><h2>注意が必要な児童</h2><button class="mini ipad-jump" data-target="attendance" type="button">入退室へ</button></div><div id="ipadAlertChildren"></div></section>
+<section class="card ipad-panel"><div class="section-head"><h2>承認・確認待ち</h2><button class="mini ipad-jump" data-target="approval" type="button">承認へ</button></div><div id="ipadPendingPreview"></div></section>
+<section class="card ipad-panel"><div class="section-head"><h2>未完了の申し送り</h2><button class="mini ipad-jump" data-target="handoff" type="button">確認へ</button></div><div id="ipadHandoffPreview"></div></section>
+<section class="card ipad-panel"><div class="section-head"><h2>事故・ヒヤリハット</h2><button class="mini ipad-jump" data-target="safety" type="button">安全管理へ</button></div><div id="ipadIncidentPreview"></div></section>
+</div>
+</section>
+<section class="ipad-view hidden" id="ipadViewAttendance">
+<div class="ipad-view-heading"><div><p class="eyebrow">TODAY OPERATIONS</p><h1>入室・お迎え・退室</h1></div><select class="control ipad-filter" id="ipadAttendanceFilter"><option value="all">すべて</option><option value="planned">未入室</option><option value="arrived">入室中</option><option value="pickup_waiting">お迎え待ち</option><option value="departed">退室済み</option><option value="alert">警告あり</option><option value="absent">欠席</option></select></div>
+<div class="ipad-child-grid" id="ipadChildGrid"></div>
+</section>
+<section class="ipad-view hidden" id="ipadViewApproval">
+<div class="ipad-view-heading"><div><p class="eyebrow">APPROVAL QUEUE</p><h1>保護者申請・LINE連携</h1></div><a class="btn secondary" href="owner.html">PCで詳細管理</a></div>
+<div class="ipad-approval-columns">
+<section class="card ipad-panel"><h2>欠席・利用変更</h2><div id="ipadAbsenceRequests"></div></section>
+<section class="card ipad-panel"><h2>お迎え変更</h2><div id="ipadPickupRequests"></div></section>
+<section class="card ipad-panel"><h2>一人帰り</h2><div id="ipadSoloRequests"></div></section>
+<section class="card ipad-panel"><h2>LINE連携</h2><div id="ipadLineRequests"></div></section>
+</div>
+</section>
+<section class="ipad-view hidden" id="ipadViewHandoff">
+<div class="ipad-view-heading"><div><p class="eyebrow">HANDOFF</p><h1>申し送り</h1></div><button class="btn primary" id="ipadOpenHandoff" type="button">新規登録</button></div>
+<section class="card ipad-panel hidden" id="ipadHandoffFormPanel"><form id="ipadHandoffForm"><div class="ipad-form-grid"><div class="field"><label>児童</label><select class="control" id="ipadHandoffChild"><option value="">施設全体</option></select></div><div class="field"><label>分類</label><select class="control" id="ipadHandoffCategory"><option value="general">一般</option><option value="pickup">お迎え</option><option value="health">体調</option><option value="allergy">アレルギー</option><option value="behavior">様子</option><option value="school">学校</option><option value="family">家族</option><option value="safety">安全</option><option value="other">その他</option></select></div><div class="field"><label>優先度</label><select class="control" id="ipadHandoffPriority"><option value="normal">通常</option><option value="high">重要</option><option value="urgent">緊急</option><option value="low">低</option></select></div><div class="field"><label>公開範囲</label><select class="control" id="ipadHandoffVisibility"><option value="staff_only">スタッフのみ</option><option value="guardian_shareable">保護者共有可</option><option value="manager_only">管理者のみ</option></select></div></div><div class="field"><label>内容</label><textarea class="control" id="ipadHandoffContent" maxlength="3000" required=""></textarea></div><button class="btn primary" type="submit">申し送りを登録</button></form></section>
+<div class="ipad-list-grid" id="ipadHandoffList"></div>
+</section>
+<section class="ipad-view hidden" id="ipadViewSafety">
+<div class="ipad-view-heading"><div><p class="eyebrow">SAFETY</p><h1>事故・ヒヤリハット</h1></div><button class="btn danger" id="ipadOpenIncident" type="button">速報を登録</button></div>
+<section class="card ipad-panel hidden" id="ipadIncidentFormPanel"><form id="ipadIncidentForm"><div class="ipad-form-grid"><div class="field"><label>児童</label><select class="control" id="ipadIncidentChild"><option value="">施設全体</option></select></div><div class="field"><label>種別</label><select class="control" id="ipadIncidentType"><option value="near_miss">ヒヤリハット</option><option value="injury">けが</option><option value="illness">体調不良</option><option value="missing_child">所在確認</option><option value="pickup_mismatch">お迎え相違</option><option value="allergy">アレルギー</option><option value="conflict">児童間トラブル</option><option value="property_damage">物損</option><option value="other">その他</option></select></div><div class="field"><label>重要度</label><select class="control" id="ipadIncidentSeverity"><option value="low">低</option><option value="medium">中</option><option value="high">高</option><option value="critical">重大</option></select></div><div class="field"><label>発生場所</label><input class="control" id="ipadIncidentLocation" maxlength="300"/></div></div><div class="field"><label>概要</label><textarea class="control" id="ipadIncidentSummary" maxlength="3000" required=""></textarea></div><div class="field"><label>初動対応</label><textarea class="control" id="ipadIncidentAction" maxlength="3000" required=""></textarea></div><button class="btn danger" type="submit">速報を登録</button></form></section>
+<div class="ipad-list-grid" id="ipadIncidentList"></div>
+</section>
+<section class="ipad-view hidden" id="ipadViewCapacity"><div class="ipad-view-heading"><div><p class="eyebrow">HOLIDAY &amp; CAPACITY</p><h1>長期休暇・日別定員</h1></div><a class="btn secondary" href="owner.html">PCで利用調整</a></div><div class="ipad-summary-grid" id="ipadCapacitySummary"></div><section class="card ipad-panel"><h2>今後の日別定員</h2><div class="ipad-list-grid" id="ipadCapacityDays"></div></section><section class="card ipad-panel"><h2>長期休暇申請</h2><div class="ipad-list-grid" id="ipadHolidayApplications"></div></section></section><section class="ipad-view hidden" id="ipadViewSystem">
+<div class="ipad-view-heading"><div><p class="eyebrow">SYSTEM CHECK</p><h1>API・データベース確認</h1></div><button class="btn primary" id="ipadRunSystemCheck" type="button">一括確認</button></div>
+<div class="ipad-system-grid" id="ipadSystemGrid"></div><pre class="ipad-system-detail" id="ipadSystemDetail"></pre>
+</section>
+</section>
 </main>
-
-<dialog id="ipadChildDialog" class="ipad-dialog"><form method="dialog"><button class="ipad-dialog-close" aria-label="閉じる">×</button></form><div id="ipadChildDialogBody"></div></dialog>
+<dialog class="ipad-dialog" id="ipadChildDialog"><form method="dialog"><button aria-label="閉じる" class="ipad-dialog-close">×</button></form><div id="ipadChildDialogBody"></div></dialog>
 <footer class="ipad-footer"><span id="ipadVersion"></span></footer>
 <script src="config.js"></script><script src="common.js"></script><script src="owner-ipad.js"></script>
 </body>
