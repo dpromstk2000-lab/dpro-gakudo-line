@@ -1,0 +1,145 @@
+name: Fix GAKUDO Owner UI and Demo Preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Remove owner-facing system-check and enable auto demo preview
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          ROOT = Path(".")
+
+          def read(path):
+              p = ROOT / path
+              if not p.exists():
+                  raise SystemExit(f"Missing required file: {path}")
+              return p.read_text(encoding="utf-8")
+
+          def write(path, content):
+              (ROOT / path).write_text(content, encoding="utf-8", newline="\n")
+
+          # 1) Entry page: keep direct maintenance files, remove owner-facing link and wording.
+          path = "index.html"
+          text = read(path)
+          text = text.replace(
+              '<a class="btn secondary" href="system-check.html">システム検査</a>',
+              ''
+          )
+          text = text.replace(
+              '承認・定員・通知・安全警告・長期休暇・全機能検査を管理。',
+              '承認・定員・通知・安全警告・長期休暇を管理。'
+          )
+          write(path, text)
+
+          # 2) Owner PC: remove visible system-check menu.
+          path = "owner.html"
+          text = read(path)
+          text = text.replace(
+              '<button data-view="system" type="button"><span>10</span>システム確認</button>',
+              ''
+          )
+          write(path, text)
+
+          # 3) Owner iPad: remove visible API/DB inspection tab.
+          path = "owner-ipad.html"
+          text = read(path)
+          text = text.replace(
+              '<button data-view="system" type="button"><b>検査</b><small>API・DB</small></button>',
+              ''
+          )
+          write(path, text)
+
+          # 4) Auto-open the existing safe demo login when ?demo=1 is present.
+          scripts = {
+              "member.html": ("login", "demoLogin"),
+              "staff.html": ("staffLogin", "staffDemoLogin"),
+              "owner.html": ("ownerLogin", "ownerDemoLogin"),
+              "owner-ipad.html": ("ipadLogin", "ipadDemoLogin"),
+          }
+
+          for path, (login_id, button_id) in scripts.items():
+              text = read(path)
+              marker = "GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802"
+              if marker in text:
+                  continue
+
+              inline = """<script>
+          /* {marker} */
+          (() => {{
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("demo") !== "1") return;
+
+            const launch = () => {{
+              const login = document.getElementById("{login_id}");
+              const button = document.getElementById("{button_id}");
+              if (!login || !button || login.classList.contains("hidden")) return;
+              button.click();
+            }};
+
+            if (document.readyState === "loading") {{
+              document.addEventListener("DOMContentLoaded", () => setTimeout(launch, 350), {{ once: true }});
+            }} else {{
+              setTimeout(launch, 350);
+            }}
+          }})();
+          </script>""".format(
+                  marker=marker,
+                  login_id=login_id,
+                  button_id=button_id
+              )
+
+              if "</body>" not in text:
+                  raise SystemExit(f"</body> not found: {path}")
+              text = text.replace("</body>", inline + "</body>", 1)
+              write(path, text)
+
+          # 5) Assertions.
+          index = read("index.html")
+          owner = read("owner.html")
+          ipad = read("owner-ipad.html")
+
+          checks = {
+              "entry system-check link removed": 'href="system-check.html">システム検査' not in index,
+              "entry owner wording cleaned": "全機能検査を管理" not in index,
+              "owner menu removed": 'data-view="system" type="button"><span>10</span>' not in owner,
+              "ipad inspection tab removed": 'data-view="system" type="button"><b>検査</b>' not in ipad,
+              "dedicated system-check preserved": (ROOT / "system-check.html").exists(),
+              "member demo auto-login": "GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802" in read("member.html"),
+              "staff demo auto-login": "GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802" in read("staff.html"),
+              "owner demo auto-login": "GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802" in read("owner.html"),
+              "ipad demo auto-login": "GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802" in read("owner-ipad.html"),
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(("PASS" if ok else "FAIL") + " - " + name)
+          if failed:
+              raise SystemExit("Validation failed: " + ", ".join(failed))
+
+          print("GAKUDO owner UI and demo preview patch completed.")
+          PY
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html member.html staff.html owner.html owner-ipad.html
+          git commit -m "Fix GAKUDO owner UI and demo previews"
+          git push
