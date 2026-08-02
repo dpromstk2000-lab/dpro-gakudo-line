@@ -39,7 +39,7 @@
 <button data-view="safety" type="button"><span>07</span>安全・事故</button>
 <button data-view="staff" type="button"><span>08</span>職員権限</button>
 <button data-view="audit" type="button"><span>09</span>操作履歴</button>
-<button data-view="system" type="button"><span>10</span>システム確認</button>
+
 </nav>
 <div class="sidebar-actions"><button class="btn secondary" id="ownerReload" type="button">全体を再読込</button><button class="btn danger" id="ownerLogout" type="button">ログアウト</button></div>
 </aside>
@@ -95,5 +95,24 @@
 <dialog class="owner-dialog" id="childModal"><form method="dialog"><button aria-label="閉じる" class="dialog-close">×</button></form><div id="childModalBody"></div></dialog>
 <footer class="footer"><span id="ownerVersion"></span></footer>
 <script src="config.js"></script><script src="common.js"></script><script src="owner.js"></script>
-</body>
+<script>
+/* GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802 */
+(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("demo") !== "1") return;
+
+  const launch = () => {
+    const login = document.getElementById("ownerLogin");
+    const button = document.getElementById("ownerDemoLogin");
+    if (!login || !button || login.classList.contains("hidden")) return;
+    button.click();
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(launch, 350), { once: true });
+  } else {
+    setTimeout(launch, 350);
+  }
+})();
+</script></body>
 </html>

@@ -40,7 +40,7 @@
 <button data-view="approval" type="button"><b>承認</b><small id="ipadApprovalTabCount">0件</small></button>
 <button data-view="handoff" type="button"><b>申し送り</b><small id="ipadHandoffTabCount">0件</small></button>
 <button data-view="safety" type="button"><b>安全</b><small id="ipadSafetyTabCount">0件</small></button>
-<button data-view="capacity" type="button"><b>定員</b><small id="ipadCapacityTabCount">0件</small></button><button data-view="notifications" type="button"><b>警告</b><small id="ipadNotificationTabCount">0件</small></button><button data-view="system" type="button"><b>検査</b><small>API・DB</small></button>
+<button data-view="capacity" type="button"><b>定員</b><small id="ipadCapacityTabCount">0件</small></button><button data-view="notifications" type="button"><b>警告</b><small id="ipadNotificationTabCount">0件</small></button>
 </nav>
 <section class="ipad-view" id="ipadViewToday">
 <div class="ipad-summary-grid" id="ipadSummary"></div>
@@ -83,5 +83,24 @@
 <dialog class="ipad-dialog" id="ipadChildDialog"><form method="dialog"><button aria-label="閉じる" class="ipad-dialog-close">×</button></form><div id="ipadChildDialogBody"></div></dialog>
 <footer class="ipad-footer"><span id="ipadVersion"></span></footer>
 <script src="config.js"></script><script src="common.js"></script><script src="owner-ipad.js"></script>
-</body>
+<script>
+/* GAKUDO-DEMO-PREVIEW-AUTOLOGIN-20260802 */
+(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("demo") !== "1") return;
+
+  const launch = () => {
+    const login = document.getElementById("ipadLogin");
+    const button = document.getElementById("ipadDemoLogin");
+    if (!login || !button || login.classList.contains("hidden")) return;
+    button.click();
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(launch, 350), { once: true });
+  } else {
+    setTimeout(launch, 350);
+  }
+})();
+</script></body>
 </html>
