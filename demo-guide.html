@@ -1,0 +1,249 @@
+<!doctype html>
+<!-- DPRO LIVE DEMO COMMON TEMPLATE V1.0 LOCK / E-LIVE ROLLOUT2 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title id="pageTitle">DPRO 公開操作デモ・画面一覧</title>
+<style>
+:root{
+  --bg:#f2f6f5;--card:#fff;--ink:#173a35;--muted:#657672;--line:#cfe0dc;
+  --brand:#0e5b51;--deep:#083a35;--brand2:#2d8a7e;--soft:#edf7f5;
+  --shadow:0 16px 46px rgba(44,37,32,.10)
+}
+*{box-sizing:border-box}
+html{background:var(--bg);scroll-behavior:smooth}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;line-height:1.65;background:linear-gradient(180deg,#fff 0%,var(--bg) 100%)}
+a{color:inherit}.page{width:min(1140px,calc(100% - 24px));margin:0 auto;padding:20px 0 48px}
+.hero{position:relative;overflow:hidden;padding:34px;border-radius:28px;color:#fff;background:linear-gradient(135deg,var(--deep),var(--brand) 63%,var(--brand2));box-shadow:0 23px 58px rgba(35,30,27,.20)}
+.hero:after{content:"";position:absolute;right:-95px;bottom:-150px;width:290px;height:290px;border-radius:50%;background:rgba(255,255,255,.07)}
+.kicker{position:relative;z-index:1;font-size:11px;font-weight:1000;letter-spacing:.14em;opacity:.9}
+.hero h1{position:relative;z-index:1;margin:10px 0 0;font-size:clamp(28px,5vw,49px);line-height:1.24}
+.hero p{position:relative;z-index:1;max-width:830px;margin:13px 0 0;font-size:14px;opacity:.93}
+.hero-actions{position:relative;z-index:1;display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
+.button{min-height:45px;display:inline-flex;align-items:center;justify-content:center;padding:9px 15px;border-radius:999px;text-decoration:none;font-size:12px;font-weight:950}
+.button-light{color:var(--deep);background:#fff}.button-ghost{color:#fff;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.09)}
+.notice{margin-top:15px;padding:15px 17px;border:1px solid #e5cda3;border-radius:15px;background:#fff5e5;color:#725013;font-size:12px;font-weight:760}
+.demo-info{margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.demo-info>div{padding:14px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.96);box-shadow:var(--shadow)}
+.demo-info small{display:block;color:var(--brand);font-size:9px;font-weight:1000;letter-spacing:.08em}.demo-info strong{display:block;margin-top:4px;font-size:14px}
+.section-head{margin:32px 0 15px}.section-head small{color:var(--brand);font-size:10px;font-weight:1000;letter-spacing:.12em}.section-head h2{margin:5px 0 0;font-size:clamp(23px,4vw,34px)}.section-head p{max-width:840px;margin:7px 0 0;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.card{min-width:0;padding:20px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.98);box-shadow:var(--shadow)}
+.card-number{color:var(--brand);font-size:10px;font-weight:1000;letter-spacing:.1em}.card h3{margin:7px 0 0;font-size:21px;line-height:1.4}.card p{margin:8px 0 0;color:var(--muted);font-size:12px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.pills span{padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--deep);font-size:9px;font-weight:900}
+.card-note{margin-top:13px;padding:11px;border-radius:12px;background:var(--soft);color:#675a54;font-size:11px}.card-note b{color:var(--deep)}
+.card-actions{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:15px}
+.open,.official{min-height:44px;display:flex;align-items:center;justify-content:center;padding:9px 13px;border-radius:12px;text-decoration:none;font-size:10px;font-weight:950}
+.open{color:#fff;background:linear-gradient(135deg,var(--deep),var(--brand2))}.official{color:var(--deep);border:1px solid var(--line);background:var(--soft)}
+.flow{margin-top:14px;padding:19px;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:var(--shadow)}
+.flow-grid{display:grid;grid-template-columns:repeat(var(--flow-cols,5),minmax(0,1fr));gap:8px}
+.flow-step{padding:12px;border-radius:12px;background:var(--soft)}.flow-step b{display:block;color:var(--brand);font-size:10px}.flow-step strong{display:block;margin-top:4px;font-size:11px}.flow-step.same{border:1px dashed #cdbfb6}
+.footer{margin-top:26px;color:#82736c;font-size:10px;text-align:center}
+@media(max-width:900px){.flow-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.hero{padding:25px 20px}.demo-info,.grid,.flow-grid{grid-template-columns:1fr}}
+@media(max-width:420px){.page{width:min(100% - 16px,1140px)}.card-actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="page">
+<section class="hero">
+  <div class="kicker">PUBLIC OPERATION DEMO / V1.0</div>
+  <h1 id="heroTitle"></h1>
+  <p id="heroCopy"></p>
+  <div class="hero-actions">
+    <a class="button button-light" id="officialLink">公式の機能・料金説明を見る</a>
+    <a class="button button-ghost" id="primaryDemoLink">まず体験する</a>
+  </div>
+</section>
+
+<div class="notice" id="notice"></div>
+
+<section class="demo-info" id="quickInfo" aria-label="デモ利用情報"></section>
+
+<div class="section-head">
+  <small>CHOOSE A SCREEN</small>
+  <h2>確認する画面を選択</h2>
+  <p id="screenIntro"></p>
+</div>
+
+<section class="grid" id="screenGrid"></section>
+
+<div class="section-head">
+  <small>RECOMMENDED JOURNEY</small>
+  <h2>おすすめの確認順</h2>
+  <p id="journeyIntro"></p>
+</div>
+<section class="flow"><div class="flow-grid" id="flowGrid"></div></section>
+
+<div class="footer" id="footer"></div>
+</main>
+
+<script>
+/*
+  DPRO LIVE DEMO COMMON TEMPLATE V1.0
+  ------------------------------------------------------------
+  変更してよいのは CONFIG の値とCSS変数のブランド色のみ。
+  DOM骨格・セクション順・公開注意・CHOOSE A SCREEN・
+  RECOMMENDED JOURNEYはCOMMON TEMPLATE V1.0 LOCK対象。
+*/
+const CONFIG = {
+  "systemName": "DPRO 学童保育 LINE",
+  "pageTitle": "DPRO 学童保育 LINE｜公開操作デモ・画面一覧",
+  "heroCopy": "保護者の欠席・利用変更・お迎え連絡を、その日の入退室・お迎え・安全確認へ直結。保護者・スタッフ・管理者の実画面を順番に確認できます。",
+  "officialUrl": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html",
+  "primaryDemoUrl": "member.html?demo=1",
+  "notice": "公開デモでは実在する児童・保護者の氏名、学校、住所、電話番号、お迎え情報、一人帰り情報、アレルギー等を入力しないでください。必ず架空データだけで操作してください。",
+  "screenIntro": "最初に01の保護者連絡を確認し、スタッフ→管理者iPad→管理PCの順に進むと、連絡が現場へ届き安全確認までつながる流れを短時間で確認できます。",
+  "journeyIntro": "保護者連絡が当日の現場運用・承認・定員・安全警告までつながる順番です。",
+  "quickInfo": [
+    {
+      "label": "FAMILY → FIELD",
+      "text": "欠席・利用変更・お迎え連絡を当日の入退室と安全確認へ"
+    },
+    {
+      "label": "DEMO INFO",
+      "text": "?demo=1 で架空データ体験。管理系デモは管理コード 1234"
+    },
+    {
+      "label": "SCREEN STRUCTURE",
+      "text": "4実画面 / 5ステップ（04–05は同じ管理PC）"
+    }
+  ],
+  "screens": [
+    {
+      "step": "01 / PRIMARY EXPERIENCE",
+      "title": "保護者｜欠席・利用変更・お迎え連絡",
+      "description": "保護者ポータルから欠席、利用日の追加、入退室時刻、退室方法、お迎え変更などを申請します。",
+      "tags": [
+        "欠席・利用変更",
+        "お迎え変更",
+        "利用予定"
+      ],
+      "note": "LP最重要訴求を最初に確認します。?demo=1 では架空の保護者として体験できます。",
+      "url": "member.html?demo=1",
+      "cta": "保護者画面を開く",
+      "officialUrl": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html"
+    },
+    {
+      "step": "02 / FIELD STAFF",
+      "title": "スタッフ｜入室・お迎え・退室・安全確認",
+      "description": "本日の児童一覧で入室、お迎え待ち、退室、安全上の注意、申し送り、ヒヤリハットを確認します。",
+      "tags": [
+        "入退室",
+        "お迎え",
+        "安全確認"
+      ],
+      "note": "保護者からの変更内容を確認した後、この画面で当日運用を見ると連携が分かります。",
+      "url": "staff.html?demo=1",
+      "cta": "スタッフ画面を開く",
+      "officialUrl": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html"
+    },
+    {
+      "step": "03 / MANAGER IPAD",
+      "title": "管理者iPad｜当日状況・承認・安全",
+      "description": "管理者・主任向けの大画面で、全体状況、入退室、保護者申請の承認、申し送り、安全情報を確認します。",
+      "tags": [
+        "当日統合",
+        "申請承認",
+        "安全"
+      ],
+      "note": "現場全体を俯瞰する画面です。管理系デモは架空データのみ使用してください。",
+      "url": "owner-ipad.html?demo=1",
+      "cta": "管理者iPadを開く",
+      "officialUrl": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html"
+    },
+    {
+      "step": "04 / OWNER PC",
+      "title": "管理PC｜児童台帳・長期休暇・日別定員",
+      "description": "児童・保護者台帳、長期休暇申請、日別定員、待機状況などを施設全体で管理します。",
+      "tags": [
+        "児童台帳",
+        "長期休暇",
+        "定員・待機"
+      ],
+      "note": "05と同じ owner.html 内の別メニューです。画面を増やさず実装済み機能を確認します。",
+      "url": "owner.html?demo=1",
+      "cta": "管理PCを開く",
+      "officialUrl": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html"
+    },
+    {
+      "step": "05 / SAME OWNER PC",
+      "title": "管理PC｜通知・安全警告・申請承認",
+      "description": "通知・安全警告、自動確認、保護者申請、LINE連携、安全・事故などを同じ管理PCで確認します。",
+      "tags": [
+        "通知・警告",
+        "申請承認",
+        "安全・事故"
+      ],
+      "note": "04と同じ管理PCです。左メニュー「通知・警告」「申請・承認」「安全・事故」を確認してください。",
+      "url": "owner.html?demo=1",
+      "cta": "同じ管理PCを開く",
+      "officialUrl": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html"
+    }
+  ],
+  "journey": [
+    {
+      "step": "01",
+      "text": "保護者が欠席・利用変更・お迎えを連絡"
+    },
+    {
+      "step": "02",
+      "text": "スタッフが入室・お迎え・退室を安全確認"
+    },
+    {
+      "step": "03",
+      "text": "管理者iPadで承認と当日全体を確認"
+    },
+    {
+      "step": "04",
+      "text": "管理PCで児童・定員・長期休暇を管理"
+    },
+    {
+      "step": "05",
+      "text": "同じ管理PCで通知・警告・安全を確認",
+      "sameScreen": true
+    }
+  ],
+  "adminCode": "1234"
+};
+
+document.documentElement.style.setProperty("--flow-cols", String(Math.min(CONFIG.journey.length, 7)));
+document.title = CONFIG.pageTitle;
+document.getElementById("heroTitle").innerHTML = `${CONFIG.systemName}<br>公開操作デモ・画面一覧`;
+document.getElementById("heroCopy").textContent = CONFIG.heroCopy;
+document.getElementById("officialLink").href = CONFIG.officialUrl;
+document.getElementById("primaryDemoLink").href = CONFIG.primaryDemoUrl;
+document.getElementById("notice").textContent = CONFIG.notice;
+document.getElementById("screenIntro").textContent = CONFIG.screenIntro;
+document.getElementById("journeyIntro").textContent = CONFIG.journeyIntro;
+document.getElementById("footer").textContent = `${CONFIG.systemName}｜PUBLIC OPERATION DEMO V1.0`;
+
+document.getElementById("quickInfo").innerHTML = CONFIG.quickInfo.map(x =>
+  `<div><small>${x.label}</small><strong>${x.text}</strong></div>`
+).join("");
+
+document.getElementById("screenGrid").innerHTML = CONFIG.screens.map(x => `
+  <article class="card">
+    <div class="card-number">${x.step}</div>
+    <h3>${x.title}</h3>
+    <p>${x.description}</p>
+    <div class="pills">${x.tags.map(t => `<span>${t}</span>`).join("")}</div>
+    <div class="card-note">${x.note}</div>
+    <div class="card-actions">
+      <a class="open" href="${x.url}">${x.cta}</a>
+      <a class="official" href="${x.officialUrl}">説明</a>
+    </div>
+  </article>
+`).join("");
+
+document.getElementById("flowGrid").innerHTML = CONFIG.journey.map(x => `
+  <div class="flow-step${x.sameScreen ? " same" : ""}">
+    <b>${x.step}${x.sameScreen ? " / SAME SCREEN" : ""}</b>
+    <strong>${x.text}</strong>
+  </div>
+`).join("");
+</script>
+</body>
+</html>
