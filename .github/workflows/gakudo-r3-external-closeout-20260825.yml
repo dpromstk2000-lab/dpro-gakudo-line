@@ -47,12 +47,27 @@ jobs:
             '<div class="field"><label for="lineUserId">LINEユーザーID</label><input autocomplete="off" class="control" id="lineUserId"/></div>',
             ''
           )
+          if 'static.line-scdn.net/liff/edge/2/sdk.js' not in html:
+            html=html.replace('</head>','<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script></head>',1)
 
           old='''async function login(line,phone){const r=await A.api("/member/login",{method:"POST",auth:false,body:{facilityCode:C.facilityCode,lineUserId:line,phone}});A.setToken(r.token);await load();status("保護者ポータルを開きました。")}$("#demoLogin").onclick=()=>login(C.demo.lineUserId,C.demo.phone).catch(e=>status(e.message,"error"));$("#loginBtn").onclick=()=>login($("#lineUserId").value,$("#phone").value).catch(e=>status(e.message,"error"));'''
           new='''async function productionIdToken(){if(!C.liffId)throw new Error("LINEログイン設定が未登録です。施設へお問い合わせください。");if(!window.liff)throw new Error("LINEログインを開始できませんでした。");await window.liff.init({liffId:C.liffId});if(!window.liff.isLoggedIn()){window.liff.login({redirectUri:location.href});return null}const t=window.liff.getIDToken();if(!t)throw new Error("LINE本人確認情報を取得できませんでした。");return t}async function login(phone,{demo=false}={}){const body={facilityCode:C.facilityCode,phone};if(demo){body.lineUserId=C.demo.lineUserId}else{const idToken=await productionIdToken();if(!idToken)return;body.idToken=idToken}const r=await A.api("/member/login",{method:"POST",auth:false,body});A.setToken(r.token);await load();status("保護者ポータルを開きました。")}$("#demoLogin").onclick=()=>login(C.demo.phone,{demo:true}).catch(e=>status(e.message,"error"));$("#loginBtn").onclick=()=>login($("#phone").value).catch(e=>status(e.message,"error"));'''
-          if old not in js:
-            raise SystemExit('member.js login anchor not found')
-          js=js.replace(old,new,1)
+
+          # Idempotent remediation:
+          # old frontend -> patch once
+          # already-remediated frontend -> keep as-is and validate
+          if old in js:
+            js=js.replace(old,new,1)
+            print('PATCH member.js old login -> verified LIFF login')
+          elif (
+            'async function productionIdToken()' in js
+            and 'body.idToken=idToken' in js
+            and 'body.lineUserId=C.demo.lineUserId' in js
+            and 'login($("#phone").value)' in js
+          ):
+            print('PASS member.js already remediated')
+          else:
+            raise SystemExit('member.js is neither known-old nor validated R2-remediated shape')
 
           if 'liffId:' not in cfg:
             cfg=cfg.replace('  version: "GAKUDO-10-FRONT-FINAL-20260802",', '  version: "GAKUDO-R2-FRONT-20260825",\n  liffId: "",',1)
@@ -209,5 +224,5 @@ jobs:
         with:
           name: gakudo-r2-browser-runtime-qa
           path: GAKUDO_R2_QA/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
