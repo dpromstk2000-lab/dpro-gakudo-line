@@ -1,0 +1,213 @@
+name: GAKUDO R3 External Closeout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/gakudo-r3-external-closeout-20260825.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gakudo-r2-frontend-browser-qa
+  cancel-in-progress: false
+
+jobs:
+  remediate-and-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch guardian production LINE login
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          html_path=Path('member.html')
+          js_path=Path('member.js')
+          cfg_path=Path('config.js')
+          html=html_path.read_text(encoding='utf-8')
+          js=js_path.read_text(encoding='utf-8')
+          cfg=cfg_path.read_text(encoding='utf-8')
+
+          html=html.replace(
+            '施設が承認したLINE連携と登録電話番号を確認します。',
+            '施設が承認したLINE連携と登録電話番号を、LINEアプリの本人確認で確認します。'
+          )
+          html=html.replace(
+            '<div class="field"><label for="lineUserId">LINEユーザーID</label><input autocomplete="off" class="control" id="lineUserId"/></div>',
+            ''
+          )
+
+          old='''async function login(line,phone){const r=await A.api("/member/login",{method:"POST",auth:false,body:{facilityCode:C.facilityCode,lineUserId:line,phone}});A.setToken(r.token);await load();status("保護者ポータルを開きました。")}$("#demoLogin").onclick=()=>login(C.demo.lineUserId,C.demo.phone).catch(e=>status(e.message,"error"));$("#loginBtn").onclick=()=>login($("#lineUserId").value,$("#phone").value).catch(e=>status(e.message,"error"));'''
+          new='''async function productionIdToken(){if(!C.liffId)throw new Error("LINEログイン設定が未登録です。施設へお問い合わせください。");if(!window.liff)throw new Error("LINEログインを開始できませんでした。");await window.liff.init({liffId:C.liffId});if(!window.liff.isLoggedIn()){window.liff.login({redirectUri:location.href});return null}const t=window.liff.getIDToken();if(!t)throw new Error("LINE本人確認情報を取得できませんでした。");return t}async function login(phone,{demo=false}={}){const body={facilityCode:C.facilityCode,phone};if(demo){body.lineUserId=C.demo.lineUserId}else{const idToken=await productionIdToken();if(!idToken)return;body.idToken=idToken}const r=await A.api("/member/login",{method:"POST",auth:false,body});A.setToken(r.token);await load();status("保護者ポータルを開きました。")}$("#demoLogin").onclick=()=>login(C.demo.phone,{demo:true}).catch(e=>status(e.message,"error"));$("#loginBtn").onclick=()=>login($("#phone").value).catch(e=>status(e.message,"error"));'''
+          if old not in js:
+            raise SystemExit('member.js login anchor not found')
+          js=js.replace(old,new,1)
+
+          if 'liffId:' not in cfg:
+            cfg=cfg.replace('  version: "GAKUDO-10-FRONT-FINAL-20260802",', '  version: "GAKUDO-R2-FRONT-20260825",\n  liffId: "",',1)
+          else:
+            cfg=cfg.replace('GAKUDO-10-FRONT-FINAL-20260802','GAKUDO-R2-FRONT-20260825')
+
+          html_path.write_text(html,encoding='utf-8',newline='\n')
+          js_path.write_text(js,encoding='utf-8',newline='\n')
+          cfg_path.write_text(cfg,encoding='utf-8',newline='\n')
+
+          checks={
+            'raw line user id field removed':'id="lineUserId"' not in html,
+            'LIFF SDK present':'static.line-scdn.net/liff/edge/2/sdk.js' in html,
+            'frontend sends ID token':'body.idToken=idToken' in js,
+            'production does not send raw id':'lineUserId:line' not in js,
+            'demo explicit identity retained':'body.lineUserId=C.demo.lineUserId' in js,
+            'front version':'GAKUDO-R2-FRONT-20260825' in cfg,
+            'liff config slot':'liffId: ""' in cfg,
+          }
+          for k,v in checks.items(): print(('PASS' if v else 'FAIL'),k)
+          if not all(checks.values()): raise SystemExit('frontend remediation validation failed')
+          PY
+
+      - name: Commit frontend remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No frontend changes required.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add member.html member.js config.js
+            git commit -m 'GAKUDO R2 secure production LINE identity client flow'
+            git push origin main
+          fi
+          echo "SOURCE_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Wait for GitHub Pages R2 frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://dpromstk2000-lab.github.io/dpro-gakudo-line/config.js?r2wait=$(date +%s)"
+          for i in $(seq 1 60); do
+            body="$(curl -fsSL "$url" || true)"
+            if grep -q 'GAKUDO-R2-FRONT-20260825' <<<"$body"; then
+              echo "Pages R2 marker detected on attempt $i"
+              exit 0
+            fi
+            sleep 5
+            url="https://dpromstk2000-lab.github.io/dpro-gakudo-line/config.js?r2wait=$(date +%s)"
+          done
+          echo 'R2 frontend marker did not reach GitHub Pages.' >&2
+          exit 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Fresh runtime and Chromium QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p GAKUDO_R2_QA/screens
+          cat > gakudo-r2-qa.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+
+          const base='https://dpromstk2000-lab.github.io/dpro-gakudo-line';
+          const stamp=Date.now();
+          const cases=[
+            {item:'READY-018',name:'PC 1440',path:'/owner.html?demo=1',width:1440,height:1000},
+            {item:'READY-019',name:'Mobile 390',path:'/member.html?demo=1',width:390,height:844},
+            {item:'READY-020',name:'Mobile 320',path:'/staff.html?demo=1',width:320,height:720},
+            {item:'READY-021',name:'iPad 1024',path:'/owner-ipad.html?demo=1',width:1024,height:768},
+          ];
+          const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+          const browser=await chromium.launch({headless:true});
+          const results=[];
+          for(const c of cases){
+            const ctx=await browser.newContext({viewport:{width:c.width,height:c.height},locale:'ja-JP',timezoneId:'Asia/Tokyo',colorScheme:'light'});
+            const page=await ctx.newPage();
+            const pageErrors=[],consoleErrors=[],requestFailures=[];
+            page.on('pageerror',e=>pageErrors.push(String(e)));
+            page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
+            page.on('requestfailed',r=>requestFailures.push({url:r.url(),failure:r.failure()?.errorText||''}));
+            let status=null,loadError=null;
+            try{const r=await page.goto(`${base}${c.path}&r2qa=${stamp}`,{waitUntil:'networkidle',timeout:60000});status=r?.status()??null}catch(e){loadError=String(e)}
+            await page.waitForTimeout(2500);
+            const metrics=await page.evaluate(()=>({
+              innerWidth,
+              scrollWidth:Math.max(document.documentElement.scrollWidth,document.body?.scrollWidth||0),
+              text:(document.body?.innerText||''),
+              loginHidden:document.querySelector('#login')?.classList.contains('hidden')??null,
+            }));
+            const technical=/SUPABASE_SERVICE_ROLE_KEY|SERVICE_ROLE|SESSION_SECRET|LINE_CHANNEL_SECRET|Cloudflare Worker|system-check|Repository/i.test(metrics.text);
+            const secret=/eyJ[a-zA-Z0-9_-]{20,}\.|service_role|SUPABASE_SERVICE_ROLE_KEY|SESSION_SECRET/i.test(metrics.text);
+            const shot=`GAKUDO_R2_QA/screens/${c.item}.png`;
+            await page.screenshot({path:shot,fullPage:true});
+            const pass=status===200 && !loadError && metrics.scrollWidth<=metrics.innerWidth+2 && pageErrors.length===0 && consoleErrors.length===0 && requestFailures.length===0 && !technical && !secret;
+            results.push({...c,status,loadError,metrics,pageErrors,consoleErrors,requestFailures,technical,secret,screenshotSha256:sha(shot),pass});
+            await ctx.close();
+          }
+          await browser.close();
+          fs.writeFileSync('GAKUDO_R2_QA/BROWSER_QA.json',JSON.stringify({checkedAt:new Date().toISOString(),sourceHead:process.env.SOURCE_HEAD,results,ok:results.every(x=>x.pass)},null,2));
+          console.log(JSON.stringify(results,null,2));
+          if(!results.every(x=>x.pass)) process.exitCode=1;
+          JS
+
+          node gakudo-r2-qa.mjs
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, urllib.request, time
+          urls={
+            'worker_health':'https://dpro-gakudo-line-api.dpromstk2000.workers.dev/health',
+            'demo':'https://dpromstk2000-lab.github.io/dpro-gakudo-line/?demo=1',
+            'product':'https://dpromstk2000-lab.github.io/dpro-line-systems-site/systems/gakudo.html',
+            'official':'https://dpro-shop.com/systems/gakudo',
+            'lp':'https://dpromstk2000-lab.github.io/dpro-line-systems-site/lp-gakudo.html',
+            'a4_html':'https://dpromstk2000-lab.github.io/dpro-line-systems-site/flyer-gakudo.html',
+            'a4_pdf':'https://dpromstk2000-lab.github.io/dpro-line-systems-site/flyer-gakudo.pdf',
+          }
+          out={'checkedAt':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'urls':{}}
+          for k,u in urls.items():
+            try:
+              req=urllib.request.Request(u,headers={'User-Agent':'DPRO-GAKUDO-R2-QA/1.0'})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                body=r.read()
+                item={'status':r.status,'contentType':r.headers.get('content-type',''),'bytes':len(body)}
+                if k=='worker_health':
+                  try:item['json']=json.loads(body.decode('utf-8'))
+                  except Exception:item['json']=None
+                out['urls'][k]=item
+            except Exception as e:
+              out['urls'][k]={'error':str(e),'status':None}
+          Path('GAKUDO_R2_QA/RUNTIME_HTTP.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if any(v.get('status')!=200 for v in out['urls'].values()): raise SystemExit(1)
+          PY
+
+      - name: Upload R2 QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gakudo-r2-browser-runtime-qa
+          path: GAKUDO_R2_QA/
+          if-no-files-found: error
+          retention-days: 30
