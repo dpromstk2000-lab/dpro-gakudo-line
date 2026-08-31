@@ -1,0 +1,101 @@
+name: "DPRO SHOP Fix 10 GAKUDO"
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/dpro-shop-fix-10-gakudo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "dpro-shop-fix-10-gakudo"
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify audited source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            path="$1"; expected="$2"
+            test -f "$path" || { echo "Missing target: $path"; exit 31; }
+            got="$(git hash-object "$path")"
+            echo "$path  $got"
+            test "$got" = "$expected" || { echo "SOURCE SHA MISMATCH: $path expected=$expected got=$got"; exit 32; }
+          }
+          check 'owner.js' 'd8a6de9254ac6c2b2bbfc8163cd2ce569d1073af'
+          check 'owner-ipad.js' 'b088ea264895117e54febd149ddcb991bd1412e5'
+
+      - name: Apply narrow confirmed fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, sys
+          
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+          
+          def write(path, text):
+              Path(path).write_text(text, encoding="utf-8")
+          
+          def replace_once(text, old, new, label):
+              n=text.count(old)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected 1 exact match, found {n}")
+              return text.replace(old,new,1)
+          
+          def sub_once(text, pattern, repl, label, flags=0):
+              new,n=re.subn(pattern,repl,text,count=1,flags=flags)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected 1 regex match, found {n}")
+              return new
+          
+          p='owner.js'; t=read(p)
+          t=replace_once(t,
+          '''  async function saveIncident(id) {\n    try {''',
+          '''  async function saveIncident(id) {\n    const nextStatus = document.querySelector(`.incident-status[data-id="${id}"]`)?.value || "";\n    if (["resolved", "closed"].includes(nextStatus) && !confirm(`事故・安全記録を「${label(nextStatus)}」へ変更しますか？`)) return;\n    try {''','GAKUDO incident guard')
+          t=replace_once(t,
+          '''  async function notificationAlertAction(id,action){const note=action==="resolve"||action==="suppress"?(prompt("対応メモ","")||""):"";''',
+          '''  async function notificationAlertAction(id,action){if(["resolve","suppress"].includes(action)&&!confirm(action==="resolve"?"この警告を解決済みにしますか？":"この警告を非表示にしますか？"))return;const note=action==="resolve"||action==="suppress"?(prompt("対応メモ","")||""):"";''','GAKUDO owner alert guard')
+          write(p,t)
+          p='owner-ipad.js'; t=read(p)
+          t=replace_once(t,
+          '''  async function ipadAlertAction(id,action){await safeRun(async()=>{''',
+          '''  async function ipadAlertAction(id,action){if(action==='resolve'&&!confirm('この警告を解決済みにしますか？'))return;await safeRun(async()=>{''','GAKUDO ipad alert guard')
+          write(p,t)
+          PY
+
+      - name: Validate source diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git diff --stat
+          git diff -- "owner.js" "owner-ipad.js"
+          if git diff --quiet -- "owner.js" "owner-ipad.js"; then
+            echo "No source change was produced."
+            exit 41
+          fi
+
+      - name: Commit fix to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "owner.js" "owner-ipad.js"
+          git diff --cached --check
+          git commit -m "Fix GAKUDO safety terminal guards"
+          git push origin HEAD:main
