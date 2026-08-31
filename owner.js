@@ -226,6 +226,8 @@
   }
 
   async function saveIncident(id) {
+    const nextStatus = document.querySelector(`.incident-status[data-id="${id}"]`)?.value || "";
+    if (["resolved", "closed"].includes(nextStatus) && !confirm(`事故・安全記録を「${label(nextStatus)}」へ変更しますか？`)) return;
     try {
       await A.ownerApi(`/admin/incidents/${id}/review`, { method: "POST", body: {
         status: document.querySelector(`.incident-status[data-id="${id}"]`).value,
@@ -290,7 +292,7 @@
     $$(".notification-alert-action").forEach(b=>b.onclick=()=>notificationAlertAction(b.dataset.id,b.dataset.action));
     $$(".notification-job-retry").forEach(b=>b.onclick=()=>notificationRetry(b.dataset.id));
   }
-  async function notificationAlertAction(id,action){const note=action==="resolve"||action==="suppress"?(prompt("対応メモ","")||""):"";try{await A.ownerApi(`/admin/notifications/alerts/${id}/action`,{method:"POST",body:{action,note}});await loadNotifications();renderNotifications();status("警告を更新しました。")}catch(e){status(e.message,"error")}}
+  async function notificationAlertAction(id,action){if(["resolve","suppress"].includes(action)&&!confirm(action==="resolve"?"この警告を解決済みにしますか？":"この警告を非表示にしますか？"))return;const note=action==="resolve"||action==="suppress"?(prompt("対応メモ","")||""):"";try{await A.ownerApi(`/admin/notifications/alerts/${id}/action`,{method:"POST",body:{action,note}});await loadNotifications();renderNotifications();status("警告を更新しました。")}catch(e){status(e.message,"error")}}
   async function notificationRetry(id){try{await A.ownerApi(`/admin/notifications/jobs/${id}/retry`,{method:"POST",body:{}});await loadNotifications();renderNotifications();status("通知を再試行キューへ戻しました。")}catch(e){status(e.message,"error")}}
   async function prepareNotifications(){try{const result=await A.ownerApi('/admin/notifications/prepare',{method:'POST',body:{}});await loadNotifications();renderNotifications();status(`自動確認を実行しました（警告${result.alertsPrepared||0}・通知${result.jobsPrepared||0}）。`)}catch(e){status(e.message,"error")}}
 
